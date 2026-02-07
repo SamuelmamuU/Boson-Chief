@@ -1,0 +1,50 @@
+# ignores para la API
+# Entornos virtuales
+venv/
+env/
+.venv/
+ENV/
+
+# Byte-compiled / optimizados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Visual Studio Code
+*.vscode/
+
+# Variables de entorno (¡CRÍTICO!)
+.env
+.env.local
+.env.development
+.env.production
+
+# IDEs y Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Pruebas y Cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+nosetests.xml
+coverage.xml
+
+# Distribución / Empaquetado
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Base de datos local (ej. SQLite)
+*.sqlite3
+*.db
+
+# OS específicos
+.DS_Store
+Thumbs.db
