@@ -4,6 +4,7 @@ venv/
 env/
 .venv/
 ENV/
+quasar/
 
 # Byte-compiled / optimizados de Python
 __pycache__/
