@@ -130,6 +130,102 @@ export type Database = {
           },
         ]
       }
+      meeting_participants: {
+        Row: {
+          created_at: string
+          id: string
+          meeting_id: string
+          profile_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meeting_id: string
+          profile_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          profile_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_participants_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_participants_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_time: string
+          id: string
+          location: string | null
+          meeting_type: string | null
+          project_id: string | null
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time: string
+          id?: string
+          location?: string | null
+          meeting_type?: string | null
+          project_id?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time?: string
+          id?: string
+          location?: string | null
+          meeting_type?: string | null
+          project_id?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           availability: string | null

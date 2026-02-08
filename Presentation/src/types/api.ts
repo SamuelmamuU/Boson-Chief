@@ -78,6 +78,68 @@ export interface CapacityAllocation {
   updated_at: string;
 }
 
+// ============ Meeting Types ============
+
+export type MeetingType = 'internal' | 'external' | 'review' | 'standup';
+export type ParticipantStatus = 'pending' | 'accepted' | 'declined' | 'tentative';
+
+export interface MeetingParticipant {
+  id: string;
+  profile_id: string;
+  status: ParticipantStatus;
+  profile?: {
+    id: string;
+    full_name: string;
+    avatar_url?: string;
+  };
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  project_id?: string;
+  created_by?: string;
+  location?: string;
+  meeting_type: MeetingType;
+  created_at: string;
+  updated_at: string;
+  project?: {
+    id: string;
+    name: string;
+  };
+  creator?: {
+    id: string;
+    full_name: string;
+    avatar_url?: string;
+  };
+  participants?: MeetingParticipant[];
+}
+
+export interface CreateMeetingRequest {
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  project_id?: string;
+  location?: string;
+  meeting_type: MeetingType;
+  participant_ids: string[];
+}
+
+export interface UpdateMeetingRequest {
+  title?: string;
+  description?: string;
+  start_time?: string;
+  end_time?: string;
+  project_id?: string;
+  location?: string;
+  meeting_type?: MeetingType;
+  participant_ids?: string[];
+}
+
 // AI/Agent types
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';

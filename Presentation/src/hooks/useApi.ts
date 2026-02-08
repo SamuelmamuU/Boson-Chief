@@ -8,7 +8,10 @@ import type {
   User,
   PaginatedResponse,
   ChatRequest,
-  ChatResponse
+  ChatResponse,
+  Meeting,
+  CreateMeetingRequest,
+  UpdateMeetingRequest,
 } from '@/types/api';
 
 // ============ Projects ============
@@ -192,5 +195,66 @@ export function useProjectMembers(projectId: string, options?: Omit<UseQueryOpti
     queryFn: () => api.get<User[]>(`/api/projects/${projectId}/members`),
     enabled: !!projectId,
     ...options,
+  });
+}
+
+// ============ Meetings ============
+export function useMeetingsQuery(
+  startDate?: Date, 
+  endDate?: Date, 
+  options?: Omit<UseQueryOptions<Meeting[], ApiError>, 'queryKey' | 'queryFn'>
+) {
+  const buildEndpoint = () => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate.toISOString());
+    if (endDate) params.append('end_date', endDate.toISOString());
+    const queryString = params.toString();
+    return queryString ? `/api/meetings?${queryString}` : '/api/meetings';
+  };
+
+  return useQuery<Meeting[], ApiError>({
+    queryKey: ['meetings', startDate?.toISOString(), endDate?.toISOString()],
+    queryFn: () => api.get<Meeting[]>(buildEndpoint()),
+    ...options,
+  });
+}
+
+export function useMeeting(id: string, options?: Omit<UseQueryOptions<Meeting, ApiError>, 'queryKey' | 'queryFn'>) {
+  return useQuery<Meeting, ApiError>({
+    queryKey: ['meetings', id],
+    queryFn: () => api.get<Meeting>(`/api/meetings/${id}`),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useCreateMeeting() {
+  const queryClient = useQueryClient();
+  return useMutation<Meeting, ApiError, CreateMeetingRequest>({
+    mutationFn: (data) => api.post<Meeting>('/api/meetings', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    },
+  });
+}
+
+export function useUpdateMeeting() {
+  const queryClient = useQueryClient();
+  return useMutation<Meeting, ApiError, { id: string; data: UpdateMeetingRequest }>({
+    mutationFn: ({ id, data }) => api.patch<Meeting>(`/api/meetings/${id}`, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['meetings', id] });
+    },
+  });
+}
+
+export function useDeleteMeeting() {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: (id) => api.delete(`/api/meetings/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    },
   });
 }

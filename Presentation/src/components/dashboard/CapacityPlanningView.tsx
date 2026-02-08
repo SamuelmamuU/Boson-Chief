@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { startOfWeek, endOfWeek, addWeeks } from 'date-fns';
 import { motion } from 'framer-motion';
 import { 
   Calendar,
@@ -15,6 +16,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { MeetingCalendarGrid } from '@/components/meetings/MeetingCalendarGrid';
+import { MeetingDialog } from '@/components/meetings/MeetingDialog';
+import { useMeetings } from '@/hooks/useMeetings';
+import type { Meeting, CreateMeetingRequest } from '@/types/api';
 
 // Mock data for capacity planning
 const mockResources = [
@@ -84,6 +89,44 @@ function getWeekDates(weekOffset: number): { start: Date; end: Date; label: stri
 export function CapacityPlanningView() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [draggedItem, setDraggedItem] = useState<{ resourceId: string; weekKey: string; projectId: string } | null>(null);
+  const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [defaultMeetingDate, setDefaultMeetingDate] = useState<Date | undefined>();
+
+  // Calculate date range for meetings query
+  const currentDate = useMemo(() => {
+    const now = new Date();
+    return addWeeks(now, weekOffset);
+  }, [weekOffset]);
+  
+  const meetingStartDate = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
+  const meetingEndDate = useMemo(() => endOfWeek(addWeeks(currentDate, 3), { weekStartsOn: 1 }), [currentDate]);
+
+  const { meetings, isLoading: meetingsLoading, createMeeting, updateMeeting, isCreating, isUpdating } = useMeetings(
+    meetingStartDate,
+    meetingEndDate
+  );
+
+  const handleCreateMeeting = (date?: Date) => {
+    setSelectedMeeting(null);
+    setDefaultMeetingDate(date);
+    setMeetingDialogOpen(true);
+  };
+
+  const handleMeetingClick = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+    setDefaultMeetingDate(undefined);
+    setMeetingDialogOpen(true);
+  };
+
+  const handleMeetingSubmit = (data: CreateMeetingRequest) => {
+    if (selectedMeeting) {
+      updateMeeting({ id: selectedMeeting.id, ...data });
+    } else {
+      createMeeting(data);
+    }
+    setMeetingDialogOpen(false);
+  };
 
   const weeks = useMemo(() => {
     return [0, 1, 2, 3].map(i => ({
@@ -291,6 +334,24 @@ export function CapacityPlanningView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Meeting Calendar Grid */}
+      <MeetingCalendarGrid
+        meetings={meetings}
+        onCreateMeeting={handleCreateMeeting}
+        onMeetingClick={handleMeetingClick}
+        isLoading={meetingsLoading}
+      />
+
+      {/* Meeting Dialog */}
+      <MeetingDialog
+        open={meetingDialogOpen}
+        onOpenChange={setMeetingDialogOpen}
+        meeting={selectedMeeting}
+        onSubmit={handleMeetingSubmit}
+        isSubmitting={isCreating || isUpdating}
+        defaultDate={defaultMeetingDate}
+      />
     </div>
   );
 }

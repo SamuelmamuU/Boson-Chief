@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Calendar,
@@ -8,18 +9,42 @@ import {
   Users,
   Sparkles,
   MessageSquare,
-  Flag
+  Flag,
+  Plus
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { mockEvents, mockProjects } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { Event } from '@/types/enterprise';
+import { MeetingDialog } from '@/components/meetings/MeetingDialog';
+import { useMeetings } from '@/hooks/useMeetings';
+import type { Meeting, CreateMeetingRequest } from '@/types/api';
 
 export function TimelineView() {
+  const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  
+  const { createMeeting, updateMeeting, isCreating, isUpdating } = useMeetings();
+
   const sortedEvents = [...mockEvents].sort(
     (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
   );
+
+  const handleCreateMeeting = () => {
+    setSelectedMeeting(null);
+    setMeetingDialogOpen(true);
+  };
+
+  const handleMeetingSubmit = (data: CreateMeetingRequest) => {
+    if (selectedMeeting) {
+      updateMeeting({ id: selectedMeeting.id, ...data });
+    } else {
+      createMeeting(data);
+    }
+    setMeetingDialogOpen(false);
+  };
 
   const getEventIcon = (type: Event['type']) => {
     switch (type) {
@@ -66,6 +91,10 @@ export function TimelineView() {
           <p className="text-muted-foreground">Chronological view of all enterprise events</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" onClick={handleCreateMeeting}>
+            <Plus className="w-4 h-4 mr-1" />
+            Schedule Meeting
+          </Button>
           <Badge variant="outline" className="gap-1.5">
             <Sparkles className="w-3 h-3 text-primary" />
             <span>AI-generated</span>
@@ -161,6 +190,15 @@ export function TimelineView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Meeting Dialog */}
+      <MeetingDialog
+        open={meetingDialogOpen}
+        onOpenChange={setMeetingDialogOpen}
+        meeting={selectedMeeting}
+        onSubmit={handleMeetingSubmit}
+        isSubmitting={isCreating || isUpdating}
+      />
     </div>
   );
 }
