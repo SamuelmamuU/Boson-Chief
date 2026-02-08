@@ -1,142 +1,159 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { api } from '@/lib/api';
+import type { User, AuthResponse, LoginRequest, SignUpRequest, AppRole } from '@/types/api';
 
-type AppRole = 'admin' | 'manager' | 'employee';
-
-interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  email: string | null;
-  avatar_url: string | null;
-  availability: string;
-  cognitive_load: number;
-}
+const TOKEN_KEY = 'auth_token';
+const USER_KEY = 'auth_user';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
-  profile: Profile | null;
+  profile: User | null; // Alias for backwards compatibility
   roles: AppRole[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   isAdmin: boolean;
   isManager: boolean;
   isEmployee: boolean;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Initialize from localStorage
   useEffect(() => {
-    // Set up auth state listener BEFORE getting session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch profile and roles
-          setTimeout(async () => {
-            await fetchUserData(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRoles([]);
+    const initAuth = async () => {
+      try {
+        const storedToken = localStorage.getItem(TOKEN_KEY);
+        const storedUser = localStorage.getItem(USER_KEY);
+
+        if (storedToken && storedUser) {
+          api.setAuthToken(storedToken);
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+
+            // Validate token in background
+            validateToken();
+          } catch {
+            // Invalid stored user, clear storage
+            clearAuth();
+          }
         }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        clearAuth();
+      } finally {
         setLoading(false);
       }
-    );
+    };
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    initAuth();
   }, []);
 
-  const fetchUserData = async (userId: string) => {
-    try {
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (profileData) {
-        setProfile(profileData as Profile);
-      }
+  const clearAuth = () => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    api.setAuthToken(null);
+    setUser(null);
+  };
 
-      // Fetch roles
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-      
-      if (rolesData) {
-        setRoles(rolesData.map(r => r.role as AppRole));
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    } finally {
-      setLoading(false);
+  const validateToken = async () => {
+    try {
+      const currentUser = await api.get<User>('/api/users/me');
+      setUser(currentUser);
+      localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+    } catch {
+      // Token invalid, clear storage
+      clearAuth();
     }
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error as Error | null };
-  };
+  const signIn = useCallback(async (email: string, password: string): Promise<{ error: Error | null }> => {
+    try {
+      const response = await api.post<AuthResponse>('/api/auth/login', { email, password } as LoginRequest, {
+        requiresAuth: false,
+      });
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { full_name: fullName }
-      }
-    });
-    return { error: error as Error | null };
-  };
+      api.setAuthToken(response.access_token);
+      localStorage.setItem(TOKEN_KEY, response.access_token);
+      localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+      setUser(response.user);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    setRoles([]);
-  };
+      return { error: null };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { error: error as Error };
+    }
+  }, []);
+
+  const signUp = useCallback(async (email: string, password: string, fullName: string): Promise<{ error: Error | null }> => {
+    try {
+      const response = await api.post<AuthResponse>('/api/auth/register', {
+        email,
+        password,
+        full_name: fullName,
+      } as SignUpRequest, {
+        requiresAuth: false,
+      });
+
+      api.setAuthToken(response.access_token);
+      localStorage.setItem(TOKEN_KEY, response.access_token);
+      localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+      setUser(response.user);
+
+      return { error: null };
+    } catch (error) {
+      console.error('Signup error:', error);
+      return { error: error as Error };
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await api.post('/api/auth/logout', {});
+    } catch {
+      // Ignore logout errors
+    } finally {
+      clearAuth();
+    }
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const currentUser = await api.get<User>('/api/users/me');
+      setUser(currentUser);
+      localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+    } catch {
+      // If refresh fails, user may have been logged out
+    }
+  }, []);
+
+  // Role helpers
+  const roles: AppRole[] = user?.roles || [];
+  const isAdmin = roles.includes('admin');
+  const isManager = roles.includes('manager');
+  const isEmployee = roles.includes('employee') || roles.length === 0;
 
   const value: AuthContextType = {
     user,
-    session,
-    profile,
+    profile: user, // Backwards compatibility alias
     roles,
     loading,
     signIn,
     signUp,
     signOut,
-    isAdmin: roles.includes('admin'),
-    isManager: roles.includes('manager'),
-    isEmployee: roles.includes('employee') || roles.length === 0,
+    refreshUser,
+    isAdmin,
+    isManager,
+    isEmployee,
+    isAuthenticated: !!user,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
