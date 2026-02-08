@@ -1,0 +1,11 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:ics.py - http://git.io/lLljaA
+BEGIN:VEVENT
+DESCRIPTION:Participantes:\nJuan\nMaría
+DURATION:PT1H
+DTSTART:20260208T160000Z
+SUMMARY:Reunión del proyecto Alpha
+UID:5edd2e67-e327-4b45-acd7-a045aea023e4@5edd.org
+END:VEVENT
+END:VCALENDAR
