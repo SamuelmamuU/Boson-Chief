@@ -1,7 +1,7 @@
 // API Client for Python Backend
 // Base URL is configured via VITE_API_BASE_URL environment variable
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.45:8000';
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -68,7 +68,7 @@ class ApiClient {
     // Handle empty responses
     const text = await response.text();
     if (!text) return {} as T;
-    
+
     return JSON.parse(text) as T;
   }
 

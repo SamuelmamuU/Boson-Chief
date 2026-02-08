@@ -1,3 +1,9 @@
-fastapi
-uvicorn[standard]
-pydantic-settings
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+sqlalchemy==2.0.25
+pymysql==1.1.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+marshmallow==3.20.2
+python-dotenv==1.0.0
+email-validator==2.1.0
